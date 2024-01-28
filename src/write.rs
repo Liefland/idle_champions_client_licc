@@ -1,4 +1,4 @@
-#![cfg(not(feature = "readonly"))]
+#![cfg(feature = "write")]
 
 /// InsertCodeRequest is the request body for inserting a code into the database.
 /// You will also need an API Key to insert codes.

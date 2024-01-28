@@ -23,8 +23,7 @@ serde_json = { version = "1.0.112" }
 tokio = { version = "1.11.0", features = ["macros"] }
 
 [features]
-default = [
-]
-readonly = [] # with this feature enabled, the write operations are gone and the need for API key is nullified
+default = []
+write = [] # with this feature enabled, the write operations are added and an API key can be supplied
 
 [badges]

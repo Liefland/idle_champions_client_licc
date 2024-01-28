@@ -1,4 +1,4 @@
-#![cfg(not(feature = "readonly"))]
+#![cfg(feature = "write")]
 
 use std::env::VarError;
 

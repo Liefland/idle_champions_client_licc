@@ -1,7 +1,7 @@
-#[cfg(not(feature = "readonly"))]
+#[cfg(feature = "write")]
 use crate::api_key::ApiKey;
 use crate::client::error::{ClientError, ErrorResponse};
-#[cfg(not(feature = "readonly"))]
+#[cfg(feature = "write")]
 use crate::write;
 use crate::{Code, Source};
 use reqwest;
@@ -11,7 +11,7 @@ static DEFAULT_BASE_URL: &str = "https://codes.idlechampions.liefland.net/v1/";
 
 pub struct CodesClient {
     base_url: String,
-    #[cfg(not(feature = "readonly"))]
+    #[cfg(feature = "write")]
     api_key: Option<ApiKey>,
     client: reqwest::Client,
 }
@@ -27,7 +27,7 @@ pub mod error {
         /// The remote has returned a non-successful HTTP status code
         ServerError(ErrorResponse),
         /// You are attempting to make a write request without an API Key
-        #[cfg(not(feature = "readonly"))]
+        #[cfg(feature = "write")]
         ApiKeyMissing,
     }
 
@@ -76,17 +76,17 @@ impl CodesClient {
     pub fn new(
         client: reqwest::Client,
         base_url: String,
-        #[cfg(not(feature = "readonly"))] api_key: Option<ApiKey>,
+        #[cfg(feature = "write")] api_key: Option<ApiKey>,
     ) -> Self {
         Self {
             base_url,
-            #[cfg(not(feature = "readonly"))]
+            #[cfg(feature = "write")]
             api_key,
             client,
         }
     }
 
-    #[cfg(not(feature = "readonly"))]
+    #[cfg(feature = "write")]
     pub fn default_with_api_key(api_key: ApiKey) -> Self {
         Self {
             api_key: Some(api_key),
@@ -111,7 +111,7 @@ impl CodesClient {
         self.response(response).await
     }
 
-    #[cfg(not(feature = "readonly"))]
+    #[cfg(feature = "write")]
     pub async fn put(&mut self, route: &str, body: &str) -> Result<String, ClientError> {
         let api_key = self
             .api_key
@@ -149,7 +149,7 @@ impl CodesClient {
         Ok(mapping_slim(codes))
     }
 
-    #[cfg(not(feature = "readonly"))]
+    #[cfg(feature = "write")]
     pub async fn insert_code(
         &mut self,
         insert_request: write::InsertCodeRequest,
@@ -186,7 +186,7 @@ impl Default for CodesClient {
     fn default() -> Self {
         Self {
             base_url: DEFAULT_BASE_URL.to_string(),
-            #[cfg(not(feature = "readonly"))]
+            #[cfg(feature = "write")]
             api_key: None,
             client: reqwest::Client::new(),
         }
@@ -238,11 +238,11 @@ mod test {
         let client = CodesClient::default();
         assert!(client.base_url.eq(DEFAULT_BASE_URL));
 
-        #[cfg(not(feature = "readonly"))]
+        #[cfg(feature = "write")]
         assert!(client.api_key.is_none());
     }
 
-    #[cfg(not(feature = "readonly"))]
+    #[cfg(feature = "write")]
     #[test]
     fn test_construct_client_with_api_key() {
         assert!(
@@ -281,6 +281,24 @@ mod test {
         assert!(m[0].creator.is_some());
         assert!(m[0].submitter.is_some());
         assert!(m[0].lister.is_some());
+    }
+
+    #[test]
+    fn test_can_deserialize_rocket_error() {
+        let output = serde_json::from_str::<ErrorResponse>(
+            r#"{"error":{ "code": 422,"reason":"Unprocessable Entity","description": "data.."}}"#,
+        );
+
+        assert!(output.is_ok());
+    }
+
+    #[test]
+    fn test_can_deserialize_remote_error() {
+        let output = serde_json::from_str::<ErrorResponse>(
+            r#"{"error":{"code":401,"description":"Invalid API key","debug":null}}"#,
+        );
+
+        assert!(output.is_ok());
     }
 
     fn mock_response() -> RetrieveCodesResponse {

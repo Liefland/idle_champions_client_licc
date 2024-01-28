@@ -17,9 +17,11 @@ All repositories we maintain: [GitHub](https://github.com/Liefland?q=idle_champi
 
 Add as a dependency: 
 
-- `cargo add licc --features="readonly"`
-
-We recommend enabling the `readonly` feature, as only very few people have access to the write API.
+- `cargo add licc`
+- `cargo add licc --features="write"` 
+  - Enables write operations of the API 
+    This functionality will only be helpful to you if you have an API Key
+    or want to build against the possibility consumers of your program may have one.
 
 ## Examples
 
