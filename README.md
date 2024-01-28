@@ -32,7 +32,7 @@ async fn list_codes() -> Result<(), ClientError> {
 
     let response: Vec<Code> = client.get_codes().await?;
 
-    response.map(|code| println!("{}", code.code));
+    response.for_each(|code| println!("{}", code.code));
     
     Ok(())
 }
