@@ -25,19 +25,19 @@ pub struct Code {
     /// We run some internal services that crawl various sources (discord, wiki, etc) and add codes
     pub lister: Option<Source>,
 }
-
-/// InsertCodeRequest is the request body for inserting a code into the database.
-/// You will also need an API Key to insert codes.
-pub struct InsertCodeRequest {
-    /// The code itself that can be redeemed in-game.
-    pub code: String,
-    /// A unix timestamp of when the code expires, best guess - we recommend defaulting to next week if unknown.
-    pub expires_at: u64,
-    /// The creator is the person who "created" the code. This is usually a streamer or developer.
-    pub creator: SourceLookup,
-    /// The submitter is the person who submitted the code to some kind of list or channel
-    pub submitter: Option<SourceLookup>,
-}
+//
+// /// InsertCodeRequest is the request body for inserting a code into the database.
+// /// You will also need an API Key to insert codes.
+// pub struct InsertCodeRequest {
+//     /// The code itself that can be redeemed in-game.
+//     pub code: String,
+//     /// A unix timestamp of when the code expires, best guess - we recommend defaulting to next week if unknown.
+//     pub expires_at: u64,
+//     /// The creator is the person who "created" the code. This is usually a streamer or developer.
+//     pub creator: SourceLookup,
+//     /// The submitter is the person who submitted the code to some kind of list or channel
+//     pub submitter: Option<SourceLookup>,
+// }
 
 /// Source represents a source of a code, such as a streamer or developer.
 /// We try to maintain a list of names (always available) and URLs (best guess of where the source came from),

@@ -108,12 +108,12 @@ impl CodesClient {
         Ok(mapping_slim(codes))
     }
 
-    pub async fn insert_code(
-        &mut self,
-        _insert_request: InsertCodeRequest,
-    ) -> Result<i32, ClientError> {
-        Ok(0)
-    }
+    // pub async fn insert_code(
+    //     &mut self,
+    //     _insert_request: InsertCodeRequest,
+    // ) -> Result<i32, ClientError> {
+    //     Ok(0)
+    // }
 }
 
 impl Default for CodesClient {
