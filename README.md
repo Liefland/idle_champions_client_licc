@@ -16,7 +16,10 @@ All repositories we maintain: [GitHub](https://github.com/Liefland?q=idle_champi
 ## Installation
 
 Add as a dependency: 
-- `cargo add codes_idle_champions`
+
+- `cargo add licc --features="readonly"`
+
+We recommend enabling the `readonly` feature, as only very few people have access to the write API.
 
 ## Examples
 

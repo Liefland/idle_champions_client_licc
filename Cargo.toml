@@ -1,6 +1,6 @@
 [package]
 name = "licc"
-description = "licc: Liefland Idle Champions Codes - Client for the liefland codes API service for Idle Champions of the Forgotten Realms chest codes"
+description = "Liefland Idle Champions Codes - Client for the liefland codes API service for Idle Champions of the Forgotten Realms chest codes"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -25,5 +25,6 @@ tokio = { version = "1.11.0", features = ["macros"] }
 [features]
 default = [
 ]
+readonly = [] # with this feature enabled, the write operations are gone and the need for API key is nullified
 
 [badges]

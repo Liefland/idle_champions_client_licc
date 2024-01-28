@@ -1,6 +1,8 @@
+#[cfg(not(feature = "readonly"))]
 mod api_key;
 pub mod client;
 
+#[cfg(not(feature = "readonly"))]
 pub use api_key::ApiKey;
 
 /// Code represents a code that can be redeemed in Idle Champions of the Forgotten Realms.

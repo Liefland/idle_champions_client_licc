@@ -1,4 +1,6 @@
-use crate::{ApiKey, Code, InsertCodeRequest, Source};
+#[cfg(not(feature = "readonly"))]
+use crate::ApiKey;
+use crate::{Code, Source};
 use reqwest;
 use std::collections::HashMap;
 
@@ -6,6 +8,7 @@ static DEFAULT_BASE_URL: &str = "https://codes.idlechampions.liefland.net/v1/";
 
 pub struct CodesClient {
     base_url: String,
+    #[cfg(not(feature = "readonly"))]
     api_key: Option<ApiKey>,
     client: reqwest::Client,
 }
@@ -14,6 +17,7 @@ pub struct CodesClient {
 pub enum ClientError {
     Reqwest(reqwest::Error),
     Serde(serde_json::Error),
+    #[cfg(not(feature = "readonly"))]
     ApiKeyMissing,
 }
 
@@ -39,14 +43,20 @@ struct RetrieveCodesResponse {
 }
 
 impl CodesClient {
-    pub fn new(client: reqwest::Client, base_url: String, api_key: Option<ApiKey>) -> Self {
+    pub fn new(
+        client: reqwest::Client,
+        base_url: String,
+        #[cfg(not(feature = "readonly"))] api_key: Option<ApiKey>,
+    ) -> Self {
         Self {
             base_url,
+            #[cfg(not(feature = "readonly"))]
             api_key,
             client,
         }
     }
 
+    #[cfg(not(feature = "readonly"))]
     pub fn default_with_api_key(api_key: ApiKey) -> Self {
         Self {
             api_key: Some(api_key),
@@ -71,6 +81,7 @@ impl CodesClient {
         response.text().await.map_err(ClientError::Reqwest)
     }
 
+    #[cfg(not(feature = "readonly"))]
     pub async fn put(&mut self, url: &str, body: &str) -> Result<String, ClientError> {
         let api_key = self
             .api_key
@@ -108,6 +119,7 @@ impl CodesClient {
         Ok(mapping_slim(codes))
     }
 
+    // #[cfg(not(feature = "readonly"))]
     // pub async fn insert_code(
     //     &mut self,
     //     _insert_request: InsertCodeRequest,
@@ -120,6 +132,7 @@ impl Default for CodesClient {
     fn default() -> Self {
         Self {
             base_url: DEFAULT_BASE_URL.to_string(),
+            #[cfg(not(feature = "readonly"))]
             api_key: None,
             client: reqwest::Client::new(),
         }
@@ -168,9 +181,14 @@ mod test {
 
     #[test]
     fn test_construct_client_default() {
-        assert!(CodesClient::default().api_key.is_none());
+        let client = CodesClient::default();
+        assert!(client.base_url.eq(DEFAULT_BASE_URL));
+
+        #[cfg(not(feature = "readonly"))]
+        assert!(client.api_key.is_none());
     }
 
+    #[cfg(not(feature = "readonly"))]
     #[test]
     fn test_construct_client_with_api_key() {
         assert!(

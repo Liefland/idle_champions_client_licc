@@ -1,3 +1,5 @@
+#![cfg(not(feature = "readonly"))]
+
 use std::env::VarError;
 
 /// API Key for the remote service.
