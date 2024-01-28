@@ -2,8 +2,8 @@
 
 Liefland Idle Champions Codes
 
-[![Build Status](https://github.com/zarthus/codes_idlechampions_client/actions/workflows/rust.yml/badge.svg)](https://github.com/zarthus/codes_idlechampions_client/actions)
-[![Docs.rs](https://docs.rs/codes_idlechampions_client/badge.svg)](https://docs.rs/codes_idlechampions_client/latest/)
+[![Build Status](https://github.com/liefland/idle_champions_client_licc/actions/workflows/rust.yml/badge.svg)](https://github.com/zarthus/codes_idlechampions_client/actions)
+[![Docs.rs](https://docs.rs/licc/badge.svg)](https://docs.rs/codes_idlechampions_client/latest/)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](README#license)
 
 Simple HTTP that helps you obtain codes that can be redeemed for [Idle Champions of the Forgotten Realms](https://www.idlechampions.com/)
