@@ -1,5 +1,8 @@
 #[cfg(not(feature = "readonly"))]
-use crate::ApiKey;
+use crate::api_key::ApiKey;
+use crate::client::error::{ClientError, ErrorResponse};
+#[cfg(not(feature = "readonly"))]
+use crate::write;
 use crate::{Code, Source};
 use reqwest;
 use std::collections::HashMap;
@@ -13,12 +16,39 @@ pub struct CodesClient {
     client: reqwest::Client,
 }
 
-#[derive(Debug)]
-pub enum ClientError {
-    Reqwest(reqwest::Error),
-    Serde(serde_json::Error),
-    #[cfg(not(feature = "readonly"))]
-    ApiKeyMissing,
+pub mod error {
+    /// Any error that can happen during a request
+    #[derive(Debug)]
+    pub enum ClientError {
+        /// Reqwest error
+        Reqwest(reqwest::Error),
+        /// Request failed to serialize or Response failed to deserialize
+        Serde(serde_json::Error),
+        /// The remote has returned a non-successful HTTP status code
+        ServerError(ErrorResponse),
+        /// You are attempting to make a write request without an API Key
+        #[cfg(not(feature = "readonly"))]
+        ApiKeyMissing,
+    }
+
+    /// ErrorResponse is returned from the remote when an error occurs.
+    /// Does not happen in most read scenarios.
+    #[derive(Debug, serde::Deserialize)]
+    pub struct ErrorResponse {
+        pub error: InnerErrorResponse,
+    }
+
+    /// Object inside of an ErrorResponse
+    #[derive(Debug, serde::Deserialize)]
+    pub struct InnerErrorResponse {
+        /// The status code of the error (maps to the HTTP status code in most cases)
+        pub code: i32,
+        /// The error message
+        pub description: String,
+        /// If the remote allows listing of debug messages, this will be populated
+        /// It will give concrete context of what went wrong on the remote
+        pub debug: Option<String>,
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -68,21 +98,21 @@ impl CodesClient {
         format!("{}{}", self.base_url, path)
     }
 
-    pub async fn get(&self, url: &str) -> Result<String, ClientError> {
+    pub async fn get(&self, route: &str) -> Result<String, ClientError> {
         let response = self
             .client
-            .get(self.url(url))
+            .get(self.url(route))
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
             .send()
             .await
             .map_err(ClientError::Reqwest)?;
 
-        response.text().await.map_err(ClientError::Reqwest)
+        self.response(response).await
     }
 
     #[cfg(not(feature = "readonly"))]
-    pub async fn put(&mut self, url: &str, body: &str) -> Result<String, ClientError> {
+    pub async fn put(&mut self, route: &str, body: &str) -> Result<String, ClientError> {
         let api_key = self
             .api_key
             .as_ref()
@@ -91,7 +121,7 @@ impl CodesClient {
 
         let response = self
             .client
-            .put(self.url(url))
+            .put(self.url(route))
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
             .header("X-Api-Key", api_key)
@@ -100,7 +130,7 @@ impl CodesClient {
             .await
             .map_err(ClientError::Reqwest)?;
 
-        response.text().await.map_err(ClientError::Reqwest)
+        self.response(response).await
     }
 
     pub async fn get_codes(&self) -> Result<Vec<Code>, ClientError> {
@@ -119,13 +149,37 @@ impl CodesClient {
         Ok(mapping_slim(codes))
     }
 
-    // #[cfg(not(feature = "readonly"))]
-    // pub async fn insert_code(
-    //     &mut self,
-    //     _insert_request: InsertCodeRequest,
-    // ) -> Result<i32, ClientError> {
-    //     Ok(0)
-    // }
+    #[cfg(not(feature = "readonly"))]
+    pub async fn insert_code(
+        &mut self,
+        insert_request: write::InsertCodeRequest,
+    ) -> Result<Option<i32>, ClientError> {
+        let result = self
+            .put(
+                "codes",
+                &serde_json::to_string(&insert_request).map_err(ClientError::Serde)?,
+            )
+            .await?;
+
+        // Should always work, but perhaps the remote service has a different version
+        // and now has a changed response?
+        match result.parse::<i32>() {
+            Ok(id) => Ok(Some(id)),
+            Err(_) => Ok(None),
+        }
+    }
+
+    async fn response(&self, response: reqwest::Response) -> Result<String, ClientError> {
+        if !response.status().is_success() {
+            let s_err: ErrorResponse =
+                serde_json::from_str(&response.text().await.map_err(ClientError::Reqwest)?)
+                    .map_err(ClientError::Serde)?;
+
+            return Err(ClientError::ServerError(s_err));
+        }
+
+        response.text().await.map_err(ClientError::Reqwest)
+    }
 }
 
 impl Default for CodesClient {
