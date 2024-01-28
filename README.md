@@ -1,4 +1,6 @@
-# HTTP Client - Idle Champions Codes
+# licc
+
+Liefland Idle Champions Codes
 
 [![Build Status](https://github.com/zarthus/codes_idlechampions_client/actions/workflows/rust.yml/badge.svg)](https://github.com/zarthus/codes_idlechampions_client/actions)
 [![Docs.rs](https://docs.rs/codes_idlechampions_client/badge.svg)](https://docs.rs/codes_idlechampions_client/latest/)
@@ -19,8 +21,8 @@ Add as a dependency:
 ## Examples
 
 ```rust
-use codes_idlechampions::client::{CodesClient, ClientError};
-use codes_idlechampions::Code;
+use licc::client::{CodesClient, ClientError};
+use licc::Code;
 
 async fn list_codes() -> Result<(), ClientError> {
     let client = CodesClient::default();

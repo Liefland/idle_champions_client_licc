@@ -1,5 +1,5 @@
-use codes_idlechampions::client::CodesClient;
-use codes_idlechampions::Code;
+use licc::client::CodesClient;
+use licc::Code;
 
 // Connects to a remote API and retrieves codes.
 #[tokio::test]
