@@ -22,6 +22,10 @@ serde_json = { version = "1.0.112" }
 [dev-dependencies]
 tokio = { version = "1.11.0", features = ["macros"] }
 
+[[example]]
+name = "insert_code"
+required-features = ["write"]
+
 [features]
 default = []
 write = [] # with this feature enabled, the write operations are added and an API key can be supplied

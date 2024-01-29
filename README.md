@@ -6,7 +6,7 @@ Liefland Idle Champions Codes
 [![Docs.rs](https://docs.rs/licc/badge.svg)](https://docs.rs/licc/latest/)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](README#license)
 
-Simple HTTP that helps you obtain codes that can be redeemed for [Idle Champions of the Forgotten Realms](https://www.idlechampions.com/)
+Simple Async HTTP client that helps you obtain codes that can be redeemed for [Idle Champions of the Forgotten Realms](https://www.idlechampions.com/)
 
 This interfaces with [idle_champions_codes_api](https://github.com/Liefland/idle_champions_codes_api) hosted repositories, of which
 the official one maintained by Liefland is hosted at [codes.idlechampions.liefland.net](https://codes.idlechampions.liefland.net/)
@@ -20,14 +20,12 @@ Add as a dependency:
 - `cargo add licc`
 - `cargo add licc --features="write"` 
   - Enables write operations of the API 
-    This functionality will only be helpful to you if you have an API Key
-    or want to build against the possibility consumers of your program may have one.
+    This functionality will only be helpful to you if you have an API Key.
 
 ## Examples
 
 ```rust
-use licc::client::{CodesClient, ClientError};
-use licc::Code;
+use licc::{Code, client::CodesClient};
 
 async fn list_codes() -> Result<(), ClientError> {
     let client = CodesClient::default();
@@ -39,6 +37,8 @@ async fn list_codes() -> Result<(), ClientError> {
     Ok(())
 }
 ```
+
+For more examples, see the `examples/` directory.
 
 ## Contributing
 

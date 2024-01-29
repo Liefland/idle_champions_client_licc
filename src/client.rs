@@ -6,6 +6,8 @@ use crate::{Code, Source};
 use reqwest;
 use std::collections::HashMap;
 
+/// The default base URL
+/// This points to the service hosted by the author of this crate.
 static DEFAULT_BASE_URL: &str = "https://codes.idlechampions.liefland.net/v1";
 
 pub struct CodesClient {
@@ -71,30 +73,59 @@ struct RetrieveCodesResponse {
     sources: HashMap<i32, Source>,
 }
 
+#[cfg(feature = "write")]
+mod puts {
+    use crate::write::InsertCodeRequest;
+
+    #[derive(Clone, Debug, serde::Serialize)]
+    pub(crate) struct RemoteInsertCodeRequest {
+        code: String,
+        expires_at: u64,
+        creator_name: String,
+        creator_url: String,
+        submitter_name: Option<String>,
+        submitter_url: Option<String>,
+    }
+
+    impl From<InsertCodeRequest> for RemoteInsertCodeRequest {
+        fn from(value: InsertCodeRequest) -> Self {
+            let (submitter_name, submitter_url) = match value.submitter {
+                None => (None, None),
+                Some(s) => (Some(s.name), Some(s.url)),
+            };
+
+            Self {
+                code: value.code,
+                expires_at: value.expires_at,
+                creator_name: value.creator.name,
+                creator_url: value.creator.url,
+                submitter_name,
+                submitter_url,
+            }
+        }
+    }
+}
+
 impl CodesClient {
-    /// Allows complete control over what you provide,
-    /// In mose cases, you'll want to use `default`, `default_with_api_key` or `default_with_base_url` instead.
-    pub fn new(client: reqwest::Client, base_url: String, api_key: Option<ApiKey>) -> Self {
-        Self {
-            base_url,
-            client,
-            api_key,
-        }
+    /// Construct a new CodesClient providing an optional API key
+    /// If no values need to ever change - or if the `write` feature is always disabled,
+    /// consider using `default` instead.
+    pub fn new(api_key: Option<ApiKey>) -> Self {
+        Self::new_full(api_key, None, None)
     }
 
-    /// Instantiate the default client, but provide an (optional) API key.
-    pub fn default_with_api_key(api_key: Option<ApiKey>) -> Self {
+    /// Construct a new CodesClient, optionally providing an API Key.
+    /// If left to None, default values will be used.
+    /// If no values need to change, consider using `default` instead.
+    pub fn new_full(
+        api_key: Option<ApiKey>,
+        base_url: Option<String>,
+        client: Option<reqwest::Client>,
+    ) -> Self {
         Self {
+            base_url: base_url.unwrap_or_else(|| DEFAULT_BASE_URL.to_string()),
+            client: client.unwrap_or_else(Self::default_client),
             api_key,
-            ..Default::default()
-        }
-    }
-
-    /// Instantiate the default client, but override the base url.
-    pub fn default_with_base_url(base_url: String) -> Self {
-        Self {
-            base_url,
-            ..Default::default()
         }
     }
 
@@ -144,6 +175,11 @@ impl CodesClient {
     }
 
     /// Query HTTP GET `/api/v1/codes` and deserialize the response.
+    ///
+    /// This is useful if you need the code itself, and the meta-information.
+    /// All Optional fields will try to have values, unless they were not provided by the remote.
+    ///
+    /// If you only need the code and the expiry information, use `get_codes_slim` instead.
     pub async fn get_codes(&self) -> Result<Vec<Code>, ClientError> {
         let response = self.get("/codes").await?;
 
@@ -153,6 +189,11 @@ impl CodesClient {
     }
 
     /// Query HTTP GET `/api/v1/codes` and deserialize the response, returning a slim subset including only essential data.
+    ///
+    /// This is useful if you only need the code itself, and not the meta-information.
+    /// All Optional fields will be None.
+    ///
+    /// If you need the code and the meta-information, use `get_codes` instead.
     pub async fn get_codes_slim(&self) -> Result<Vec<Code>, ClientError> {
         let response = self.get("/codes").await?;
 
@@ -170,10 +211,12 @@ impl CodesClient {
         &mut self,
         insert_request: write::InsertCodeRequest,
     ) -> Result<Option<i32>, ClientError> {
+        let payload = puts::RemoteInsertCodeRequest::from(insert_request);
+
         let result = self
             .put(
                 "/codes",
-                &serde_json::to_string(&insert_request).map_err(ClientError::Serde)?,
+                &serde_json::to_string(&payload).map_err(ClientError::Serde)?,
             )
             .await?;
 
@@ -206,11 +249,9 @@ impl CodesClient {
             std::env::consts::OS
         )
     }
-}
 
-impl Default for CodesClient {
-    fn default() -> Self {
-        let client = reqwest::Client::builder()
+    pub fn default_client() -> reqwest::Client {
+        reqwest::Client::builder()
             .user_agent(Self::user_agent())
             .default_headers({
                 let mut headers = reqwest::header::HeaderMap::new();
@@ -225,12 +266,16 @@ impl Default for CodesClient {
                 headers
             })
             .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
+            .unwrap_or_else(|_| reqwest::Client::new())
+    }
+}
 
+impl Default for CodesClient {
+    fn default() -> Self {
         Self {
             base_url: DEFAULT_BASE_URL.to_string(),
             api_key: None,
-            client,
+            client: Self::default_client(),
         }
     }
 }
@@ -284,17 +329,15 @@ mod test {
 
     #[test]
     fn test_construct_client_with_api_key() {
-        assert!(
-            CodesClient::default_with_api_key(Some(ApiKey::new("foo".to_string())))
-                .api_key
-                .is_some()
-        );
+        assert!(CodesClient::new(Some(ApiKey::new("foo".to_string())))
+            .api_key
+            .is_some());
     }
 
     #[test]
     fn test_construct_client_with_base_url() {
         assert_eq!(
-            CodesClient::default_with_base_url("http://foo.example".to_string()).base_url,
+            CodesClient::new_full(None, Some("http://foo.example".to_string()), None).base_url,
             "http://foo.example"
         );
     }
@@ -348,6 +391,32 @@ mod test {
         );
 
         assert!(output.is_ok());
+    }
+
+    #[test]
+    fn test_it_can_serialize_insert_request() {
+        let insert_request = write::InsertCodeRequest {
+            code: "FOOB-BARS-TEST".to_string(),
+            expires_at: 800,
+            creator: write::SourceLookup {
+                name: "Example Creator".to_string(),
+                url: "https://creator.example.org".to_string(),
+            },
+            submitter: Some(write::SourceLookup {
+                name: "Example Submitter".to_string(),
+                url: "https://submitter.example.org".to_string(),
+            }),
+        };
+
+        let remote_request = puts::RemoteInsertCodeRequest::from(insert_request);
+
+        let ser = serde_json::to_string(&remote_request);
+
+        assert!(ser.is_ok());
+        assert_eq!(
+            ser.unwrap(),
+            r#"{"code":"FOOB-BARS-TEST","expires_at":800,"creator_name":"Example Creator","creator_url":"https://creator.example.org","submitter_name":"Example Submitter","submitter_url":"https://submitter.example.org"}"#
+        );
     }
 
     fn mock_response() -> RetrieveCodesResponse {

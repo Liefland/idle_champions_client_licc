@@ -2,7 +2,7 @@
 
 /// InsertCodeRequest is the request body for inserting a code into the database.
 /// You will also need an API Key to insert codes.
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Debug)]
 pub struct InsertCodeRequest {
     /// The code itself that can be redeemed in-game.
     pub code: String,
@@ -21,7 +21,7 @@ pub struct InsertCodeRequest {
 /// but do not guarantee complete accuracy.
 ///
 /// Sources in the remote service are stored as unique (name, url) pairs
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Debug)]
 pub struct SourceLookup {
     pub name: String,
     pub url: String,
