@@ -1,5 +1,3 @@
-#![cfg(feature = "write")]
-
 use std::env::VarError;
 
 /// API Key for the remote service.
@@ -10,14 +8,14 @@ use std::env::VarError;
 pub struct ApiKey(String);
 
 impl ApiKey {
+    pub fn new(key: String) -> Self {
+        Self(key)
+    }
+
     /// Attempts to load an API Key from the environment.
     /// If the environment variable is not set, this will return an error.
     pub fn from_env(env_name: &'static str) -> Result<ApiKey, VarError> {
         Ok(Self(std::env::var(env_name)?))
-    }
-
-    pub fn new(key: String) -> Self {
-        Self(key)
     }
 
     pub fn get(&self) -> &str {

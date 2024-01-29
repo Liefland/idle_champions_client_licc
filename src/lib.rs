@@ -2,7 +2,6 @@ pub mod client;
 #[cfg(feature = "write")]
 pub mod write;
 
-#[cfg(feature = "write")]
 pub mod api_key;
 
 /// Code represents a code that can be redeemed in Idle Champions of the Forgotten Realms.

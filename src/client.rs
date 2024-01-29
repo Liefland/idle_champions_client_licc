@@ -1,4 +1,3 @@
-#[cfg(feature = "write")]
 use crate::api_key::ApiKey;
 use crate::client::error::{ClientError, ErrorResponse};
 #[cfg(feature = "write")]
@@ -7,11 +6,11 @@ use crate::{Code, Source};
 use reqwest;
 use std::collections::HashMap;
 
-static DEFAULT_BASE_URL: &str = "https://codes.idlechampions.liefland.net/v1/";
+static DEFAULT_BASE_URL: &str = "https://codes.idlechampions.liefland.net/v1";
 
 pub struct CodesClient {
     base_url: String,
-    #[cfg(feature = "write")]
+    #[allow(dead_code)]
     api_key: Option<ApiKey>,
     client: reqwest::Client,
 }
@@ -73,31 +72,40 @@ struct RetrieveCodesResponse {
 }
 
 impl CodesClient {
-    pub fn new(
-        client: reqwest::Client,
-        base_url: String,
-        #[cfg(feature = "write")] api_key: Option<ApiKey>,
-    ) -> Self {
+    /// Allows complete control over what you provide,
+    /// In mose cases, you'll want to use `default`, `default_with_api_key` or `default_with_base_url` instead.
+    pub fn new(client: reqwest::Client, base_url: String, api_key: Option<ApiKey>) -> Self {
         Self {
             base_url,
-            #[cfg(feature = "write")]
-            api_key,
             client,
+            api_key,
         }
     }
 
-    #[cfg(feature = "write")]
-    pub fn default_with_api_key(api_key: ApiKey) -> Self {
+    /// Instantiate the default client, but provide an (optional) API key.
+    pub fn default_with_api_key(api_key: Option<ApiKey>) -> Self {
         Self {
-            api_key: Some(api_key),
+            api_key,
+            ..Default::default()
+        }
+    }
+
+    /// Instantiate the default client, but override the base url.
+    pub fn default_with_base_url(base_url: String) -> Self {
+        Self {
+            base_url,
             ..Default::default()
         }
     }
 
     fn url(&self, path: &str) -> String {
-        format!("{}{}", self.base_url, path)
+        if path.starts_with('/') {
+            return format!("{}{}", self.base_url, path);
+        }
+        format!("{}/{}", self.base_url, path)
     }
 
+    /// Perform any arbitrary GET request and take ownership of deserializing the response.
     pub async fn get(&self, route: &str) -> Result<String, ClientError> {
         let response = self
             .client
@@ -112,6 +120,8 @@ impl CodesClient {
     }
 
     #[cfg(feature = "write")]
+    /// Perform any arbitrary PUT request and take ownership of deserializing the response.
+    /// These actions typically require an API key.
     pub async fn put(&mut self, route: &str, body: &str) -> Result<String, ClientError> {
         let api_key = self
             .api_key
@@ -133,22 +143,28 @@ impl CodesClient {
         self.response(response).await
     }
 
+    /// Query HTTP GET `/api/v1/codes` and deserialize the response.
     pub async fn get_codes(&self) -> Result<Vec<Code>, ClientError> {
-        let response = self.get("codes").await?;
+        let response = self.get("/codes").await?;
 
         let codes: RetrieveCodesResponse = serde_json::from_str(&response).unwrap();
 
         Ok(mapping_full(codes))
     }
 
+    /// Query HTTP GET `/api/v1/codes` and deserialize the response, returning a slim subset including only essential data.
     pub async fn get_codes_slim(&self) -> Result<Vec<Code>, ClientError> {
-        let response = self.get("codes").await?;
+        let response = self.get("/codes").await?;
 
         let codes: RetrieveCodesResponse = serde_json::from_str(&response).unwrap();
 
         Ok(mapping_slim(codes))
     }
 
+    /// Query HTTP PUT `/api/v1/codes` and deserialize the response.
+    /// *This requires an API Key.*
+    ///
+    /// Insert a Code into the remote service.
     #[cfg(feature = "write")]
     pub async fn insert_code(
         &mut self,
@@ -156,7 +172,7 @@ impl CodesClient {
     ) -> Result<Option<i32>, ClientError> {
         let result = self
             .put(
-                "codes",
+                "/codes",
                 &serde_json::to_string(&insert_request).map_err(ClientError::Serde)?,
             )
             .await?;
@@ -169,6 +185,7 @@ impl CodesClient {
         }
     }
 
+    /// Handles the response from the remote service, checking for errors.
     async fn response(&self, response: reqwest::Response) -> Result<String, ClientError> {
         if !response.status().is_success() {
             let s_err: ErrorResponse =
@@ -180,15 +197,40 @@ impl CodesClient {
 
         response.text().await.map_err(ClientError::Reqwest)
     }
+
+    fn user_agent() -> String {
+        format!(
+            "{}/{} (reqwest; {})",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION"),
+            std::env::consts::OS
+        )
+    }
 }
 
 impl Default for CodesClient {
     fn default() -> Self {
+        let client = reqwest::Client::builder()
+            .user_agent(Self::user_agent())
+            .default_headers({
+                let mut headers = reqwest::header::HeaderMap::new();
+                headers.insert(
+                    reqwest::header::ACCEPT,
+                    reqwest::header::HeaderValue::from_static("application/json"),
+                );
+                headers.insert(
+                    reqwest::header::CONTENT_TYPE,
+                    reqwest::header::HeaderValue::from_static("application/json"),
+                );
+                headers
+            })
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+
         Self {
             base_url: DEFAULT_BASE_URL.to_string(),
-            #[cfg(feature = "write")]
             api_key: None,
-            client: reqwest::Client::new(),
+            client,
         }
     }
 }
@@ -237,25 +279,32 @@ mod test {
     fn test_construct_client_default() {
         let client = CodesClient::default();
         assert!(client.base_url.eq(DEFAULT_BASE_URL));
-
-        #[cfg(feature = "write")]
         assert!(client.api_key.is_none());
     }
 
-    #[cfg(feature = "write")]
     #[test]
     fn test_construct_client_with_api_key() {
         assert!(
-            CodesClient::default_with_api_key(ApiKey::new("foo".to_string()))
+            CodesClient::default_with_api_key(Some(ApiKey::new("foo".to_string())))
                 .api_key
                 .is_some()
         );
     }
 
     #[test]
+    fn test_construct_client_with_base_url() {
+        assert_eq!(
+            CodesClient::default_with_base_url("http://foo.example".to_string()).base_url,
+            "http://foo.example"
+        );
+    }
+
+    #[test]
     fn test_client_url() {
         let client = CodesClient::default();
-        assert_eq!(client.url("foo"), format!("{}foo", DEFAULT_BASE_URL));
+
+        assert_eq!(client.url("foo"), format!("{}/foo", DEFAULT_BASE_URL));
+        assert_eq!(client.url("/foo"), format!("{}/foo", DEFAULT_BASE_URL));
     }
 
     #[test]

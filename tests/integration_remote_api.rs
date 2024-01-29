@@ -20,7 +20,7 @@ async fn test_get_codes() {
 async fn test_404() {
     let client = CodesClient::default();
 
-    let response = client.get("inttests_client/some_nonexistent").await;
+    let response = client.get("/inttests_client/some_nonexistent").await;
 
     assert!(response.is_err());
 
