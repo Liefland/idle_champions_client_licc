@@ -1,6 +1,6 @@
 # licc
 
-Liefland Idle Champions Codes
+Liefland Idle Champions Codes - https://crates.io/crates/licc
 
 [![Build Status](https://github.com/liefland/idle_champions_client_licc/actions/workflows/rust.yml/badge.svg)](https://github.com/liefland/idle_champions_client_licc/actions)
 [![Docs.rs](https://docs.rs/licc/badge.svg)](https://docs.rs/licc/latest/)
@@ -25,7 +25,7 @@ Add as a dependency:
 ## Examples
 
 ```rust
-use licc::{Code, client::CodesClient};
+use licc::{Code, client::{CodesClient, ClientError}};
 
 async fn list_codes() -> Result<(), ClientError> {
     let client = CodesClient::default();
