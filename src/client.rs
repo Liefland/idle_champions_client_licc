@@ -394,6 +394,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "write")]
     fn test_it_can_serialize_insert_request() {
         let insert_request = write::InsertCodeRequest {
             code: "FOOB-BARS-TEST".to_string(),
